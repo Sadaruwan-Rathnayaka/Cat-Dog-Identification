@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Night — CNN Predictor (Centered Layout)</title>
+<style>
+  :root{
+    --bg:#05060a;
+    --muted:#9aa4b2;
+    --accent1:#7c5cff;
+    --accent2:#00e0a1;
+    --accent3:#ff7ab6;
+    --glass: rgba(255,255,255,0.03);
+    --card-radius:14px;
+    --pad:16px;
+    --max-width:1100px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    height:100vh;
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+    background:
+      radial-gradient(900px 400px at 10% 10%, rgba(124,92,255,0.03), transparent 10%),
+      radial-gradient(700px 300px at 90% 90%, rgba(0,224,161,0.02), transparent 10%),
+      var(--bg);
+    color:#e6eef8;
+    -webkit-font-smoothing:antialiased;
+
+    /* CENTER the whole app horizontally + vertically */
+    display:flex;
+    align-items:center;    /* vertical center */
+    justify-content:center;/* horizontal center */
+    padding:28px;
+  }
+
+  .wrap{
+    width:100%;
+    max-width:var(--max-width);
+    /* make the content block take most of viewport but leave small margins */
+    min-height: calc(100vh - 56px);
+    display:flex;
+    flex-direction:column;
+    justify-content:center; /* center header+grid inside wrap */
+  }
+
+  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .title h1{margin:0;font-size:20px}
+  .title p{margin:6px 0 0;color:var(--muted);font-size:13px}
+  .status{font-size:13px;color:var(--muted)}
+
+  .grid{
+    display:grid;
+    grid-template-columns: 65% 35%;
+    gap:18px;
+    align-items:center; /* <-- center columns vertically */
+  }
+  @media(max-width:900px){ .grid{grid-template-columns:1fr; } }
+
+  .card{
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+    border-radius:var(--card-radius);
+    padding:var(--pad);
+    border:1px solid rgba(255,255,255,0.03);
+    box-shadow: 0 12px 36px rgba(2,6,23,0.55);
+
+    /* ensure both cards have same visual height and content vertically balanced */
+    min-height:430px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+
+  /* INLINE UPLOAD BAR */
+  .inline-upload { display:flex; gap:12px; align-items:center; width:100%; }
+  .upload-bar{
+    flex:1; display:flex; align-items:center; gap:16px; padding:18px 18px; border-radius:12px;
+    background: linear-gradient(120deg, rgba(124,92,255,0.10), rgba(0,224,161,0.05));
+    border:1px solid rgba(255,255,255,0.04); cursor:pointer; transition:transform .12s, box-shadow .12s; min-height:120px;
+  }
+  .upload-bar:hover{ transform:translateY(-4px); box-shadow:0 12px 30px rgba(124,92,255,0.06) }
+  .upload-icon{ width:52px;height:52px;border-radius:12px;background:linear-gradient(180deg,var(--accent1),var(--accent2)); display:flex;align-items:center;justify-content:center;font-weight:800;color:#041126;font-size:20px; }
+  .upload-text{ flex:1; min-width:0; }
+  .upload-text .title{ font-weight:800; font-size:18px }
+  .upload-text .desc{ color:var(--muted); font-size:13px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .thumb{ width:160px; height:110px; border-radius:8px; object-fit:cover; border:1px solid rgba(255,255,255,0.04); background:rgba(0,0,0,0.2); display:none; }
+
+  .bar-actions{ display:flex; gap:8px; align-items:center; margin-left:6px }
+  .btn{ padding:10px 14px; border-radius:10px; border:0; background:linear-gradient(90deg,var(--accent1),var(--accent2)); color:#041126; font-weight:700; cursor:pointer; }
+  .btn.ghost{ padding:10px 14px; border-radius:10px; background:transparent; border:1px solid rgba(255,255,255,0.04); color:var(--muted) }
+
+  .small{ font-size:13px; color:var(--muted) }
+
+  .preview-row{ margin-top:18px; display:flex; justify-content:center; align-items:center; }
+  .preview-large{ width:520px; max-width:100%; height:340px; border-radius:12px; object-fit:cover; border:1px solid rgba(255,255,255,0.04); box-shadow: 0 12px 36px rgba(2,6,23,0.45); display:none; }
+
+  /* RIGHT: controls */
+  .controls{ display:flex; flex-direction:column; gap:12px }
+  .backend-hidden{ display:none; } /* hidden backend field */
+
+  .row{ display:flex; gap:10px }
+  .progress{ height:8px; background:rgba(255,255,255,0.03); border-radius:8px; overflow:hidden; margin-top:6px }
+  .progress > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent2),var(--accent3)); transition:width .25s }
+
+  /* RESULT - ZOOM + EMOJI */
+  .result{
+    margin-top:8px;
+    padding:18px;
+    border-radius:12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.04);
+    display:flex;
+    align-items:center;
+    gap:12px;
+    justify-content:space-between;
+    transform-origin:center;
+    transition: transform 280ms cubic-bezier(.2,.8,.2,1), box-shadow 280ms;
+  }
+  .result.zoom {
+    transform: scale(1.06);
+    box-shadow: 0 20px 60px rgba(124,92,255,0.18), 0 6px 18px rgba(0,224,161,0.06);
+  }
+  .result-left{ display:flex; gap:12px; align-items:center; }
+  .result .emoji{ font-size:34px; line-height:1; width:56px; height:56px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:rgba(255,255,255,0.02); }
+  .result .label{ font-weight:900; font-size:20px }
+  .result .meta{ color:var(--muted); font-size:13px }
+
+  /* modal */
+  .modal-wrap{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:999; padding:24px }
+  .modal-back{ position:absolute; inset:0; background:linear-gradient(180deg,rgba(2,6,23,0.6),rgba(2,6,23,0.7)); backdrop-filter: blur(4px) }
+  .modal{ position:relative; z-index:10; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:22px; border-radius:14px; border:1px solid rgba(255,255,255,0.04); max-width:520px; text-align:center }
+  .modal .emoji{ font-size:72px }
+  .modal h2{ margin:10px 0 6px; font-size:26px }
+  .modal p{ color:var(--muted); margin:0 }
+  .modal .ok{ margin-top:12px; padding:10px 14px; border-radius:10px; border:0; background:linear-gradient(90deg,var(--accent1),var(--accent2)); font-weight:700; cursor:pointer }
+
+  footer{ margin-top:12px; color:var(--muted); font-size:13px; text-align:center }
+</style>
+</head>
+<body>
+  <div class="wrap" role="application">
+    <div class="header">
+      <div class="title">
+        <h1>CNN Image Predictor</h1>
+         </div>
+      <div class="status">Backend: <span id="status">checking...</span></div>
+    </div>
+
+    <div class="grid" role="region" aria-label="Main content">
+      <!-- LEFT -->
+      <div class="card" aria-labelledby="uploadTitle">
+        <div>
+          <div id="uploadTitle" class="small" style="margin-bottom:8px">Upload image</div>
+
+          <div class="inline-upload">
+            <div id="uploadBar" class="upload-bar" tabindex="0" role="button" aria-label="Upload image">
+              <div class="upload-icon">⇪</div>
+              <div class="upload-text">
+                <div class="title" id="barTitle">Click or drop an image</div>
+                <div class="desc" id="barDesc">Supported: JPG, PNG, WEBP  </div>
+              </div>
+              <img id="thumb" class="thumb" alt="thumb">
+            </div>
+
+            <div class="bar-actions">
+              <button id="choose" class="btn ghost">Choose</button>
+              <button id="clear" class="btn ghost">Clear</button>
+            </div>
+          </div>
+
+          <div id="fileInfo" class="small" style="margin-top:12px;display:none"></div>
+        </div>
+
+        <div class="preview-row" aria-hidden="true">
+          <img id="previewLarge" class="preview-large" alt="large preview">
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="card" aria-labelledby="controlsTitle">
+        <div>
+          <div id="controlsTitle" class="small" style="margin-bottom:8px">Controls</div>
+
+          <div class="controls" role="region" aria-label="Controls">
+            <div class="backend-hidden">
+              <label class="small">Backend (hidden)</label>
+              <input id="backendUrl" class="input" value="http://127.0.0.1:5000/predict" />
+            </div>
+
+            <div class="row">
+              <button id="upload" class="btn" disabled>Predict</button>
+              <button id="choose2" class="btn ghost">Choose</button>
+            </div>
+
+            <div id="progressWrap" style="display:none">
+              <div class="small">Uploading…</div>
+              <div class="progress"><i id="progressBar"></i></div>
+            </div>
+
+            <div id="result" style="display:none" class="result" aria-live="polite">
+              <div class="result-left">
+                <div id="resEmoji" class="emoji">🔍</div>
+                <div>
+                  <div class="label" id="resLabel">cats</div>
+                  <div class="meta" id="resMeta"> </div>
+                </div>
+              </div>
+              <div class="meta">—</div>
+            </div>
+
+            <div class="small" style="margin-top:10px;color:var(--muted)"> </div>
+          </div>
+        </div>
+
+        <!-- keep footer area in card bottom for balanced vertical spacing -->
+        <div style="margin-top:12px;color:var(--muted);font-size:13px;text-align:center"> </div>
+      </div>
+    </div>
+
+    
+  </div>
+
+  <!-- Modal -->
+  <div id="modalWrap" class="modal-wrap" role="dialog" aria-hidden="true">
+    <div class="modal-back"></div>
+    <div class="modal" role="document" aria-modal="true">
+      <div id="modalEmoji" class="emoji">🐱</div>
+      <h2 id="modalLabel">Cat</h2>
+      <p id="modalText">Looks like a cat 🐾</p>
+      <button id="modalOk" class="ok">Nice!</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // Elements
+  const uploadBar = document.getElementById('uploadBar');
+  const barTitle = document.getElementById('barTitle');
+  const barDesc = document.getElementById('barDesc');
+  const thumb = document.getElementById('thumb');
+  const fileInfo = document.getElementById('fileInfo');
+  const previewLarge = document.getElementById('previewLarge');
+
+  const choose = document.getElementById('choose');
+  const choose2 = document.getElementById('choose2');
+  const clearBtn = document.getElementById('clear');
+  const uploadBtn = document.getElementById('upload');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar = document.getElementById('progressBar');
+
+  const backendUrl = document.getElementById('backendUrl');
+  const status = document.getElementById('status');
+
+  const result = document.getElementById('result');
+  const resLabel = document.getElementById('resLabel');
+  const resMeta = document.getElementById('resMeta');
+  const resEmoji = document.getElementById('resEmoji');
+
+  const modalWrap = document.getElementById('modalWrap');
+  const modalEmoji = document.getElementById('modalEmoji');
+  const modalLabel = document.getElementById('modalLabel');
+  const modalText = document.getElementById('modalText');
+  const modalOk = document.getElementById('modalOk');
+
+  let selectedFile = null;
+  const DEFAULT_PREDICT_URL = (backendUrl && backendUrl.value) ? backendUrl.value.trim() : 'http://127.0.0.1:5000/predict';
+
+  // Health check
+  async function checkBackend(){
+    const url = (backendUrl?.value || DEFAULT_PREDICT_URL).replace(/\/predict\/?$/i, '/health');
+    try {
+      const r = await fetch(url, { method:'GET', cache:'no-store' });
+      status.textContent = r.ok ? 'online' : 'offline';
+      status.style.color = r.ok ? '#6ee7b7' : '#9aa4b2';
+    } catch(e) {
+      status.textContent = 'offline';
+      status.style.color = '#9aa4b2';
+    }
+  }
+
+  function showSelected(file){
+    selectedFile = file;
+    barTitle.textContent = file.name;
+    barDesc.textContent = `${(file.size/1024/1024).toFixed(2)} MB`;
+    thumb.src = URL.createObjectURL(file);
+    thumb.style.display = 'block';
+    fileInfo.style.display = 'block';
+    fileInfo.textContent = `Ready to upload • ${(file.size/1024/1024).toFixed(2)} MB`;
+    previewLarge.src = URL.createObjectURL(file);
+    previewLarge.style.display = 'block';
+    uploadBtn.disabled = false;
+  }
+
+  function openChooser(cb){
+    const i = document.createElement('input');
+    i.type = 'file';
+    i.accept = 'image/*';
+    i.onchange = () => { if(i.files && i.files[0]) cb(i.files[0]); };
+    i.click();
+  }
+
+  choose.addEventListener('click', ()=> openChooser(showSelected));
+  choose2.addEventListener('click', ()=> openChooser(showSelected));
+  uploadBar.addEventListener('click', ()=> openChooser(showSelected));
+
+  clearBtn.addEventListener('click', ()=> {
+    selectedFile = null;
+    barTitle.textContent = 'Click or drop an image';
+    barDesc.textContent = 'Supported: JPG, PNG, WEBP — paste with Ctrl+V';
+    thumb.style.display = 'none';
+    previewLarge.style.display = 'none';
+    fileInfo.style.display = 'none';
+    uploadBtn.disabled = true;
+    result.style.display = 'none';
+  });
+
+  // drag & drop
+  uploadBar.addEventListener('dragover', (e)=>{ e.preventDefault(); uploadBar.classList.add('dragover'); });
+  uploadBar.addEventListener('dragleave', ()=>{ uploadBar.classList.remove('dragover'); });
+  uploadBar.addEventListener('drop', (e)=> {
+    e.preventDefault(); uploadBar.classList.remove('dragover');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f && f.type.startsWith('image/')) showSelected(f);
+  });
+
+  // paste
+  window.addEventListener('paste', (ev) => {
+    const items = (ev.clipboardData || ev.originalEvent.clipboardData).items || [];
+    for (const it of items) {
+      if(it.kind === 'file' && it.type.startsWith('image/')) {
+        const f = it.getAsFile();
+        showSelected(f);
+        break;
+      }
+    }
+  });
+
+  // upload with progress
+  uploadBtn.addEventListener('click', async () => {
+    if(!selectedFile) return;
+    const url = (backendUrl?.value || DEFAULT_PREDICT_URL).trim() || DEFAULT_PREDICT_URL;
+    uploadBtn.disabled = true;
+    progressWrap.style.display = 'block';
+    progressBar.style.width = '0%';
+    result.style.display = 'none';
+
+    try {
+      const resp = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url);
+        xhr.responseType = 'json';
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+          else reject(xhr.response || {error:'Server error ' + xhr.status});
+        };
+        xhr.onerror = () => reject({error:'Network error'});
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) progressBar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+        };
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+        xhr.send(fd);
+      });
+
+      handlePrediction(resp);
+    } catch (err) {
+      alert('Upload failed: ' + (err && err.error ? JSON.stringify(err) : String(err)));
+    } finally {
+      uploadBtn.disabled = false;
+      progressWrap.style.display = 'none';
+      progressBar.style.width = '0%';
+      checkBackend();
+    }
+  });
+
+  // handle prediction + emoji + zoom effect
+  function handlePrediction(data){
+    let label = 'unknown';
+    let idx = '-';
+    if(!data) { alert('Empty response'); return; }
+    if(data.label) label = String(data.label);
+    else if(data.class) label = String(data.class);
+    else if(data.label_index !== undefined) { idx = data.label_index; label = String(idx); }
+
+    // set inline result
+    resLabel.textContent = label;
+    resMeta.textContent = `Index: ${data.label_index ?? idx}`;
+    result.style.display = 'flex';
+
+    // choose emoji
+    const l = label.toLowerCase();
+    let emoji = '🔍';
+    if(l.includes('cat')) emoji = '🐱';
+    else if(l.includes('dog')) emoji = '🐶';
+    else if(l.includes('bird')) emoji = '🐦';
+    else if(l.includes('horse')) emoji = '🐴';
+    resEmoji.textContent = emoji;
+
+    // zoom animation: add class then remove after 700ms
+    result.classList.add('zoom');
+    setTimeout(()=> result.classList.remove('zoom'), 700);
+
+    // show modal for cat/dog
+    if(l.includes('cat') || l.includes('dog')){
+      modalEmoji.textContent = emoji;
+      modalLabel.textContent = l.includes('cat') ? 'Cat' : 'Dog';
+      modalText.textContent = l.includes('cat') ? 'We think this is a cat.' : 'We think this is a dog.';
+      modalWrap.style.display = 'flex';
+      modalWrap.setAttribute('aria-hidden','false');
+    }
+  }
+
+  modalOk.addEventListener('click', ()=> {
+    modalWrap.style.display = 'none';
+    modalWrap.setAttribute('aria-hidden','true');
+  });
+
+  // initial
+  checkBackend();
+})();
+</script>
+</body>
+</html>
