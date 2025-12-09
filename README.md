@@ -1,7 +1,8 @@
-# 🐶🐱 Cat vs Dog Image Classification Using CNN
+# 🐶🐱 Cat vs Dog Image Classification Using Trancfer Learning
 
-This project is a Convolutional Neural Network (CNN) based image classifier that can accurately distinguish between **cats** and **dogs**.  
-It is built using **TensorFlow/Keras** and trained on a labeled image dataset.
+🚀🔥 Excited to share my latest Deep Learning project — a Cat vs Dog Image Classifier built using Transfer Learning! 🐶🐱🤖
+This model leverages a pre-trained CNN architecture (Transfer Learning) to improve accuracy and training efficiency.
+ By fine-tuning the final layers on a custom dataset, the model achieved an impressive 96% accuracy on test images.
 
 ## 📌 Project Overview
 
